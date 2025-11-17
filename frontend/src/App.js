@@ -11,8 +11,9 @@ function App() {
       <div className="min-vh-100 bg-light">
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
           <div className="container">
-            <a className="navbar-brand fw-bold" href="/">
-              OpenSource Companion
+            <a className="navbar-brand fw-bold d-flex align-items-center" href="/">
+              <img src="/favicon-96x96.png" alt="Logo" width="60" height="60" className="me-2" style={{borderRadius: '50%'}} />
+              <span>OpenSource Companion</span>
             </a>
           </div>
         </nav>

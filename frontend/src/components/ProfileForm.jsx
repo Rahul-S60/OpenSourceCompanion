@@ -1,77 +1,103 @@
 // frontend/src/components/ProfileForm.jsx
-import React, { useState, useEffect } from "react";
-import { mockUser } from "../mockData";
+import React, { useState, useEffect } from 'react';
+import { mockUser } from '../mockData';
+import api from '../services/api';
 
-const LANGUAGES = ["Python", "JavaScript", "Java", "C++", "Go", "Ruby"];
+const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++', 'Go', 'Ruby'];
 const FRAMEWORKS = {
-    Python: ["Flask", "Django", "FastAPI", "NumPy", "Pandas"],
-    JavaScript: ["React", "Node.js", "Express", "Vue", "Angular"],
-    Java: ["Spring Boot", "Hibernate"],
-    C__: ["STL", "Qt"],
-    Go: ["Gin", "Echo"],
-    Ruby: ["Rails", "Sinatra"],
+    Python: ['Flask', 'Django', 'FastAPI', 'NumPy', 'Pandas'],
+    JavaScript: ['React', 'Node.js', 'Express', 'Vue', 'Angular'],
+    Java: ['Spring Boot', 'Hibernate'],
+    C__: ['STL', 'Qt'],
+    Go: ['Gin', 'Echo'],
+    Ruby: ['Rails', 'Sinatra']
 };
 
 const ProfileForm = ({ onSave }) => {
-    // STATE: What the form remembers
-    const [githubUsername, setGithubUsername] = useState("");
-    const [skills, setSkills] = useState([]); // Array of {language, frameworks[], level}
+    const [githubUsername, setGithubUsername] = useState('');
+    const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [usernameStatus, setUsernameStatus] = useState(null); // null, 'checking', 'valid', 'invalid'
 
-    // Load mock data when form opens
     useEffect(() => {
-        setGithubUsername(mockUser.githubUsername);
-        setSkills(mockUser.skills);
+        setSkills([{ language: '', frameworks: [], level: 'beginner' }]);
     }, []);
 
-    // Add a new empty skill row
-    const addSkill = () => {
-        setSkills([...skills, { language: "", frameworks: [], level: "beginner" }]);
+    // VERIFY GITHUB USERNAME
+    const verifyGitHubUsername = async (username) => {
+        if (!username.trim()) {
+            setUsernameStatus(null);
+            return;
+        }
+
+        setUsernameStatus('checking');
+        try {
+            const res = await fetch(`https://api.github.com/users/${username}`);
+            if (res.ok) {
+                setUsernameStatus('valid');
+            } else {
+                setUsernameStatus('invalid');
+            }
+        } catch (err) {
+            setUsernameStatus('invalid');
+        }
     };
 
-    // Update one field in a skill
+    const addSkill = () => {
+        setSkills([...skills, { language: '', frameworks: [], level: 'beginner' }]);
+    };
+
     const updateSkill = (index, field, value) => {
         const newSkills = [...skills];
-        if (field === "language") {
-            newSkills[index] = { language: value, frameworks: [], level: "beginner" };
+        if (field === 'language') {
+            newSkills[index] = { language: value, frameworks: [], level: 'beginner' };
         } else {
             newSkills[index][field] = value;
         }
         setSkills(newSkills);
     };
 
-    // Remove a skill row
     const removeSkill = (index) => {
         setSkills(skills.filter((_, i) => i !== index));
     };
 
-    // SAVE: Later calls backend, now just logs + redirects
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         // VALIDATION
         if (!githubUsername.trim()) {
-            alert("GitHub username is required!");
+            alert('GitHub username is required!');
             setLoading(false);
             return;
         }
-        if (skills.some((s) => !s.language)) {
-            alert("All skills must have a language!");
+        if (usernameStatus !== 'valid') {
+            alert('Please enter a valid GitHub username!');
+            setLoading(false);
+            return;
+        }
+        if (skills.some(s => !s.language)) {
+            alert('All skills must have a language!');
             setLoading(false);
             return;
         }
 
         try {
-            // MOCK SAVE
-            console.log("Saving to backend:", { githubUsername, skills });
-            // await api.put('/profile', { githubUsername, skills }); // LATER
-            setTimeout(() => {
-                setLoading(false);
-                onSave?.(); // Redirect to dashboard
-            }, 1000);
+            // MOCK SAVE (Backend not ready)
+            console.log('MOCK SAVE:', { githubUsername, skills });
+            
+            // Store in localStorage for now
+            localStorage.setItem('userProfile', JSON.stringify({ githubUsername, skills }));
+            
+            await new Promise(r => setTimeout(r, 1000));
+
+            // REAL SAVE (Uncomment when backend ready)
+            // await api.put('/profile', { githubUsername, skills });
+
+            onSave?.();
         } catch (err) {
-            alert("Save failed!");
+            alert('Save failed!');
+        } finally {
             setLoading(false);
         }
     };
@@ -80,29 +106,49 @@ const ProfileForm = ({ onSave }) => {
         <div className="card shadow-sm p-4">
             <h3 className="mb-4">Complete Your Profile</h3>
             <form onSubmit={handleSubmit}>
+
                 {/* GITHUB USERNAME */}
                 <div className="mb-4">
                     <label className="form-label fw-bold">GitHub Username</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="e.g., prajwalMangaji"
-                        value={githubUsername}
-                        onChange={(e) => setGithubUsername(e.target.value)}
-                        required
-                    />
-                    <div className="form-text">Used to verify your PRs later</div>
+                    <div className="input-group">
+                        <span className="input-group-text">@</span>
+                        <input
+                            type="text"
+                            className={`form-control ${usernameStatus === 'valid' ? 'is-valid' : ''} ${usernameStatus === 'invalid' ? 'is-invalid' : ''}`}
+                            placeholder="e.g., prajwalMangaji"
+                            value={githubUsername}
+                            onChange={(e) => setGithubUsername(e.target.value)}
+                            onBlur={(e) => verifyGitHubUsername(e.target.value)}
+                            required
+                        />
+                        {usernameStatus === 'checking' && (
+                            <span className="input-group-text">
+                                <div className="spinner-border spinner-border-sm" role="status">
+                                    <span className="visually-hidden">Checking...</span>
+                                </div>
+                            </span>
+                        )}
+                        {usernameStatus === 'valid' && (
+                            <span className="input-group-text text-success">✓</span>
+                        )}
+                        {usernameStatus === 'invalid' && (
+                            <span className="input-group-text text-danger">✗</span>
+                        )}
+                    </div>
+                    <div className="form-text">
+                        {usernameStatus === 'invalid' ? (
+                            <small className="text-danger">User not found on GitHub</small>
+                        ) : (
+                            'Used to verify your PRs later'
+                        )}
+                    </div>
                 </div>
 
                 {/* SKILLS */}
                 <div className="mb-4">
                     <div className="d-flex justify-content-between align-items-center mb-2">
                         <label className="form-label fw-bold">Your Skills</label>
-                        <button
-                            type="button"
-                            className="btn btn-outline-primary btn-sm"
-                            onClick={addSkill}
-                        >
+                        <button type="button" className="btn btn-outline-primary btn-sm" onClick={addSkill}>
                             + Add Skill
                         </button>
                     </div>
@@ -110,25 +156,19 @@ const ProfileForm = ({ onSave }) => {
                     {skills.map((skill, index) => (
                         <div key={index} className="border rounded p-3 mb-3 bg-light">
                             <div className="row g-2">
-                                {/* LANGUAGE */}
                                 <div className="col-md-4">
                                     <select
                                         className="form-select"
                                         value={skill.language}
-                                        onChange={(e) =>
-                                            updateSkill(index, "language", e.target.value)
-                                        }
+                                        onChange={(e) => updateSkill(index, 'language', e.target.value)}
                                     >
                                         <option value="">Select Language</option>
-                                        {LANGUAGES.map((lang) => (
-                                            <option key={lang} value={lang}>
-                                                {lang}
-                                            </option>
+                                        {LANGUAGES.map(lang => (
+                                            <option key={lang} value={lang}>{lang}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* FRAMEWORKS */}
                                 <div className="col-md-4">
                                     <select
                                         multiple
@@ -136,31 +176,23 @@ const ProfileForm = ({ onSave }) => {
                                         size="3"
                                         value={skill.frameworks}
                                         onChange={(e) => {
-                                            const selected = Array.from(
-                                                e.target.selectedOptions,
-                                                (o) => o.value
-                                            );
-                                            updateSkill(index, "frameworks", selected);
+                                            const selected = Array.from(e.target.selectedOptions, o => o.value);
+                                            updateSkill(index, 'frameworks', selected);
                                         }}
                                         disabled={!skill.language}
                                     >
-                                        {(FRAMEWORKS[skill.language] || []).map((fw) => (
+                                        {(FRAMEWORKS[skill.language] || []).map(fw => (
                                             <option key={fw}>{fw}</option>
                                         ))}
                                     </select>
-                                    <div className="form-text">
-                                        Hold Ctrl/Cmd to select multiple
-                                    </div>
+                                    <div className="form-text">Hold Ctrl/Cmd to select multiple</div>
                                 </div>
 
-                                {/* LEVEL */}
                                 <div className="col-md-3">
                                     <select
                                         className="form-select"
                                         value={skill.level}
-                                        onChange={(e) =>
-                                            updateSkill(index, "level", e.target.value)
-                                        }
+                                        onChange={(e) => updateSkill(index, 'level', e.target.value)}
                                     >
                                         <option value="beginner">Beginner</option>
                                         <option value="intermediate">Intermediate</option>
@@ -168,7 +200,6 @@ const ProfileForm = ({ onSave }) => {
                                     </select>
                                 </div>
 
-                                {/* REMOVE */}
                                 <div className="col-md-1">
                                     <button
                                         type="button"
@@ -187,13 +218,12 @@ const ProfileForm = ({ onSave }) => {
                     )}
                 </div>
 
-                {/* SUBMIT */}
                 <button
                     type="submit"
                     className="btn btn-success btn-lg w-100"
-                    disabled={loading}
+                    disabled={loading || usernameStatus !== 'valid'}
                 >
-                    {loading ? "Saving..." : "Save Profile & Explore Issues"}
+                    {loading ? 'Saving...' : 'Save Profile & Explore Issues'}
                 </button>
             </form>
         </div>
