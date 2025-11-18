@@ -83,20 +83,16 @@ const ProfileForm = ({ onSave }) => {
         }
 
         try {
-            // MOCK SAVE (Backend not ready)
-            console.log('MOCK SAVE:', { githubUsername, skills });
-            
-            // Store in localStorage for now
+            // REAL SAVE — BACKEND IS READY!
+            await api.put('/profile', { githubUsername, skills });
+
+            // Optional: Save to localStorage as backup
             localStorage.setItem('userProfile', JSON.stringify({ githubUsername, skills }));
-            
-            await new Promise(r => setTimeout(r, 1000));
 
-            // REAL SAVE (Uncomment when backend ready)
-            // await api.put('/profile', { githubUsername, skills });
-
-            onSave?.();
+            onSave?.(); // Redirect to dashboard
         } catch (err) {
-            alert('Save failed!');
+            const msg = err.response?.data?.message || 'Save failed!';
+            alert(msg);
         } finally {
             setLoading(false);
         }
